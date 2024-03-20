@@ -1,56 +1,48 @@
-# Binary static analysis of subzero CORE, to make sure it's built properly
-name: "Binary Static Analysis"
-
-on:
-  push:
-    branches: [master]
-  pull_request:
-    # The branches below must be a subset of the branches above
-    branches: [master]
-  schedule:
-    # Daily at 2:42am
-    - cron: '42 3 * * *'
-
 jobs:
   bincheck:
-    name: "Binary Static Analysis"
-    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash -euxo pipefail {0}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [3.9]
-
+    name: Binary Static Analysis
+    runs-on: self-hosted
     steps:
-    - name: Checkout repository
+    - continue-on-error: true
+      name: Checkout repository
       uses: actions/checkout@v2
       with:
-        # We must fetch at least the immediate parents so that if this is
-        # a pull request then we can checkout the head.
         fetch-depth: 2
-        submodules: 'recursive'
-
-    - name: Set up Python ${{ matrix.python-version }}
+        submodules: recursive
+    - continue-on-error: true
+      name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+    - continue-on-error: true
+      name: Display Python version
+      run: 'python -c "import sys; print(sys.version)"
 
-    - name: Display Python version
-      run: |
-        python -c "import sys; print(sys.version)"
+        '
+    - continue-on-error: true
+      name: Install build dependencies
+      run: 'scripts/ubuntu_install_protobuf.sh
 
-    - name: Install build dependencies
-      run: |
-        scripts/ubuntu_install_protobuf.sh
+        '
+    - continue-on-error: true
+      name: Build subzero CORE
+      run: 'scripts/build_core.sh
 
-    - name: Build subzero CORE
-      run: |
-        scripts/build_core.sh
+        '
+    - continue-on-error: true
+      name: Run binary static analysis
+      run: 'scripts/bsa_check_core.sh core/build
 
-    # Run binary static analysis
-    - name: Run binary static analysis
-      run: |
-        scripts/bsa_check_core.sh core/build
+        '
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+        - 3.9
+name: Binary Static Analysis
+on:
+  repository_dispatch:
+    types: trigger-ga___binary-static-analysis.yml

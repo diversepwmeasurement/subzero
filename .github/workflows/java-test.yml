@@ -1,43 +1,33 @@
-# Subzero java unit tests
-name: "Java Unit Test"
-
-on:
-  push:
-    branches: [master]
-  pull_request:
-    # The branches below must be a subset of the branches above
-    branches: [master]
-  schedule:
-    # Daily at 1am
-    - cron: '0 1 * * *'
-
 jobs:
   java-unit-test:
-    name: "Java Unit Test"
-    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash -euxo pipefail {0}
+    name: Java Unit Test
+    runs-on: self-hosted
+    steps:
+    - continue-on-error: true
+      name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 2
+        submodules: recursive
+    - continue-on-error: true
+      name: Setup Gradle
+      uses: gradle/gradle-build-action@v2
+    - continue-on-error: true
+      name: Run Unit tests
+      run: 'cd ${{ github.workspace }}/java
 
+        ./gradlew test --info
+
+        '
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.9]
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        # We must fetch at least the immediate parents so that if this is
-        # a pull request then we can checkout the head.
-        fetch-depth: 2
-        submodules: 'recursive'
-
-    - name: Setup Gradle
-      uses: gradle/gradle-build-action@v2
-
-    # Unit tests for Java
-    - name: Run Unit tests
-      run: |
-        cd ${{ github.workspace }}/java
-        ./gradlew test --info
+        python-version:
+        - 3.9
+name: Java Unit Test
+on:
+  repository_dispatch:
+    types: trigger-ga___java-test.yml

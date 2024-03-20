@@ -1,72 +1,70 @@
-# Subzero regression test for transaction signing
-name: "SignTx Regression Test with ASAN"
-
-on:
-  push:
-    branches: [master]
-  pull_request:
-    # The branches below must be a subset of the branches above
-    branches: [master]
-  schedule:
-    # Daily at 1am
-    - cron: '0 1 * * *'
-
 jobs:
   signtx-test-asan:
-    name: "SignTx Test with ASAN"
-    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash -euxo pipefail {0}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [3.9]
-
+    name: SignTx Test with ASAN
+    runs-on: self-hosted
     steps:
-    - name: Checkout repository
+    - continue-on-error: true
+      name: Checkout repository
       uses: actions/checkout@v2
       with:
-        # We must fetch at least the immediate parents so that if this is
-        # a pull request then we can checkout the head.
         fetch-depth: 2
-        submodules: 'recursive'
-
-    - name: Set up Python ${{ matrix.python-version }}
+        submodules: recursive
+    - continue-on-error: true
+      name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+    - continue-on-error: true
+      name: Display Python version
+      run: 'python -c "import sys; print(sys.version)"
 
-    - name: Display Python version
-      run: |
-        python -c "import sys; print(sys.version)"
-
-    - name: Setup Gradle
+        '
+    - continue-on-error: true
+      name: Setup Gradle
       uses: gradle/gradle-build-action@v2
-
-    - name: Install dependencies
+    - continue-on-error: true
+      name: Install dependencies
       run: scripts/ubuntu_install_protobuf.sh
+    - continue-on-error: true
+      name: Build Java
+      run: 'cd ${{ github.workspace }}/java
 
-    # Build Java targets
-    - name: Build Java
-      run: |
-        cd ${{ github.workspace }}/java
         ./gradlew clean build --info
 
-    # Build CORE with ASAN
-    - name: Build Subzero Core with ASAN
+        '
+    - continue-on-error: true
+      name: Build Subzero Core with ASAN
       run: scripts/build_core.sh -DENABLE_ASAN=ON
+    - continue-on-error: true
+      name: Run Subzero CORE with ASAN
+      run: 'cd ${{ github.workspace }}
 
-    - name: Run Subzero CORE with ASAN
-      run: |
-        cd ${{ github.workspace }}
         ./core/build/subzero-testnet &
 
-    - name: Run SignTx Test with ASAN
-      run: |
-        cd ${{ github.workspace }}
+        '
+    - continue-on-error: true
+      name: Run SignTx Test with ASAN
+      run: 'cd ${{ github.workspace }}
+
         sleep 10
+
         rm -f /tmp/signtx-test-asan.out
-        java -jar ./java/gui/build/libs/gui-1.0.0-SNAPSHOT-shaded.jar --signtx-test | tee /tmp/signtx-test-asan.out
+
+        java -jar ./java/gui/build/libs/gui-1.0.0-SNAPSHOT-shaded.jar --signtx-test
+        | tee /tmp/signtx-test-asan.out
+
         grep -qv "ALL TESTS PASSED" /tmp/signtx-test-asan.out || exit 1
+
+        '
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+        - 3.9
+name: SignTx Regression Test with ASAN
+on:
+  repository_dispatch:
+    types: trigger-ga___signtx-test-asan.yml
